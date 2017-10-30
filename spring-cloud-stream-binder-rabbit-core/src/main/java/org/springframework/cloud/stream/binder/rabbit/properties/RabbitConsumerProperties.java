@@ -20,12 +20,14 @@ import javax.validation.constraints.Min;
 
 import org.springframework.amqp.core.AcknowledgeMode;
 import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.Assert;
 
 /**
  * @author Marius Bogoevici
  * @author Gary Russell
  */
+@ConfigurationProperties
 public class RabbitConsumerProperties extends RabbitCommonProperties {
 
 	private boolean transacted;

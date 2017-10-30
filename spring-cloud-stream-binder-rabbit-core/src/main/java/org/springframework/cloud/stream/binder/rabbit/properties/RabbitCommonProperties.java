@@ -19,6 +19,7 @@ package org.springframework.cloud.stream.binder.rabbit.properties;
 import org.hibernate.validator.constraints.Range;
 
 import org.springframework.amqp.core.ExchangeTypes;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * @author Gary Russell

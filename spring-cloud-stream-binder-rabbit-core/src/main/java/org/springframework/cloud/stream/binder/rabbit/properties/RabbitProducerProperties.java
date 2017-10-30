@@ -19,11 +19,13 @@ package org.springframework.cloud.stream.binder.rabbit.properties;
 import javax.validation.constraints.Min;
 
 import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * @author Marius Bogoevici
  * @author Gary Russell
  */
+@ConfigurationProperties
 public class RabbitProducerProperties extends RabbitCommonProperties {
 
 	private boolean compress;
