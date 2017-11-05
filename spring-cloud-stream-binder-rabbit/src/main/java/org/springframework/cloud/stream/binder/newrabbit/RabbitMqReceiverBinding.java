@@ -109,8 +109,9 @@ public class RabbitMqReceiverBinding
 		this.retryTemplate = this.buildRetryTemplate(consumerProperies);
 		Assert.state(!HeaderMode.embeddedHeaders.equals(consumerProperies.getHeaderMode()),
 				"the RabbitMQ binder does not support embedded headers since RabbitMQ supports headers natively");
-		String groupName = null; //TODO where are we getting it from?
-		String destinationName = "input"; //TODO figure out where it's coming from
+		String destinationName = this.getBindingServiceProperties().getConsumerDestinationName();
+		String groupName = this.getBindingServiceProperties().getConsumerGroupName();
+
 		ConsumerDestination consumerDestination = this.getProvisioningProvider().provisionConsumerDestination(destinationName, groupName, consumerProperies);
 		this.listenerContainer = new SimpleMessageListenerContainer(this.connectionFactory);
 		this.listenerContainer.setAcknowledgeMode(consumerProperies.getExtension().getAcknowledgeMode());

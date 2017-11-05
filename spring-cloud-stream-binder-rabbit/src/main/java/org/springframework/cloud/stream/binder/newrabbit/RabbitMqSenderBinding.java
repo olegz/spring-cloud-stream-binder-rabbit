@@ -85,10 +85,7 @@ public class RabbitMqSenderBinding
 		ExtendedProducerProperties<RabbitProducerProperties> producerProperties = this.getProducerProperties();
 		Assert.state(!HeaderMode.embeddedHeaders.equals(producerProperties.getHeaderMode()),
 				"the RabbitMQ binder does not support embedded headers since RabbitMQ supports headers natively");
-		String destinationName = "output"; //TODO figure out where it's coming from
-
-		//ConsumerDestination destination = this.getProvisioningProvider().provisionConsumerDestination(destinationName, "", null);
-		//destination.
+		String destinationName = this.getBindingServiceProperties().getProducerDestinationName();
 
 		ProducerDestination producerDestination = this.getProvisioningProvider().provisionProducerDestination(destinationName, producerProperties);
 
