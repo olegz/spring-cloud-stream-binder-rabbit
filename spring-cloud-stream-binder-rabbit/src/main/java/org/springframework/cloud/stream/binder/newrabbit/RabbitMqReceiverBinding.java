@@ -50,7 +50,7 @@ import org.springframework.integration.amqp.support.AmqpMessageHeaderErrorMessag
 import org.springframework.integration.amqp.support.DefaultAmqpHeaderMapper;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageUtils;
-import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.integration.support.MutableMessage;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryCallback;
@@ -223,7 +223,7 @@ public class RabbitMqReceiverBinding
 			headerAccessor.setLeaveMutable(true);
 			headerAccessor.copyHeaders(headers);
 
-			org.springframework.messaging.Message<byte[]> messagingMessage = MessageBuilder.createMessage(payload, headerAccessor.getMessageHeaders());
+			MutableMessage<byte[]> messagingMessage = new MutableMessage<byte[]>(payload, headerAccessor.getMessageHeaders());
 			setAttributesIfNecessary(message, messagingMessage);
 			RabbitMqReceiverBinding.this.getReceiver().accept(messagingMessage);
 		}
