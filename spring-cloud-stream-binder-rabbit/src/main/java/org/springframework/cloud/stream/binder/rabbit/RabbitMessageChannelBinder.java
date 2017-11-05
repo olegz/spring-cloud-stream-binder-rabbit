@@ -23,6 +23,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.Envelope;
+
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
@@ -79,9 +82,6 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.Envelope;
 
 /**
  * A {@link org.springframework.cloud.stream.binder.Binder} implementation backed by
