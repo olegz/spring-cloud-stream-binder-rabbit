@@ -51,6 +51,7 @@ import org.springframework.integration.amqp.support.DefaultAmqpHeaderMapper;
 import org.springframework.integration.support.ErrorMessageStrategy;
 import org.springframework.integration.support.ErrorMessageUtils;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -217,10 +218,11 @@ public class RabbitMqReceiverBinding
 				headers.put(AmqpHeaders.DELIVERY_TAG, message.getMessageProperties().getDeliveryTag());
 				headers.put(AmqpHeaders.CHANNEL, channel);
 			}
-			final org.springframework.messaging.Message<byte[]> messagingMessage = MessageBuilder
-					.withPayload(payload)
-					.copyHeaders(headers)
-					.build();
+			MessageHeaderAccessor headerAccessor = new MessageHeaderAccessor();
+			headerAccessor.setLeaveMutable(true);
+			headerAccessor.copyHeaders(headers);
+
+			org.springframework.messaging.Message<byte[]> messagingMessage = MessageBuilder.createMessage(payload, headerAccessor.getMessageHeaders());
 			setAttributesIfNecessary(message, messagingMessage);
 			RabbitMqReceiverBinding.this.getReceiver().accept(messagingMessage);
 		}
