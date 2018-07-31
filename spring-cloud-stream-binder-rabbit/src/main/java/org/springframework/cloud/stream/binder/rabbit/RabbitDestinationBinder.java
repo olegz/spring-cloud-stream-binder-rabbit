@@ -96,11 +96,13 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 		this.extendedBindingProperties = extendedBindingProperties;
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public C getExtendedConsumerProperties(String destination) {
 		return (C) new ExtendedConsumerProperties(this.extendedBindingProperties.getExtendedConsumerProperties(destination));
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public P getExtendedProducerProperties(String destination) {
 		return (P) new ExtendedProducerProperties(this.extendedBindingProperties.getExtendedProducerProperties(destination));
@@ -109,9 +111,17 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 	@Override
 	protected MessageListeningContainer createMessageListeningContainer(String inputDestinationName, C consumerProperties) {
 		ExtendedConsumerProperties<RabbitConsumerProperties> properties = getExtendedConsumerProperties(inputDestinationName);
-		SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer(connectionFactory);
-		listenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
-		listenerContainer.setChannelTransacted(properties.getExtension().isTransacted());
+		SimpleMessageListenerContainer listenerContainer = new SimpleMessageListenerContainer(this.connectionFactory);
+
+		if (properties.getExtension().isTransacted()) {
+			listenerContainer.setAcknowledgeMode(AcknowledgeMode.MANUAL);
+			listenerContainer.setChannelTransacted(properties.getExtension().isTransacted());
+		}
+		else {
+			listenerContainer.setAcknowledgeMode(AcknowledgeMode.AUTO);
+		}
+
+
 		listenerContainer.setDefaultRequeueRejected(properties.getExtension().isRequeueRejected());
 		listenerContainer.setConcurrentConsumers(1);
 		listenerContainer.setMaxConcurrentConsumers(1);
@@ -133,7 +143,8 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 					properties.getExtension().getFailedDeclarationRetryInterval());
 		}
 
-		return new RabbitMessageListeningContainer(listenerContainer);
+		RabbitMessageListeningContainer container = new RabbitMessageListeningContainer(listenerContainer);
+		return container;
 	}
 
 
@@ -222,8 +233,7 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 			RabbitUtils.commitIfNecessary(amqpChannel);
 		}
 		catch (Exception e) {
-			e.printStackTrace();
-//			this.onCancel();
+			throw new IllegalStateException("Failed to commit", e);
 		}
 	}
 
@@ -244,9 +254,9 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 		rabbitTemplate.setChannelTransacted(properties.isTransacted());
 		rabbitTemplate.setConnectionFactory(this.connectionFactory);
 		rabbitTemplate.setUsePublisherConnection(true);
-//		if (properties.isCompress()) {
-//			rabbitTemplate.setBeforePublishPostProcessors(this.compressingPostProcessor);
-//		}
+		if (properties.isCompress()) {
+			rabbitTemplate.setBeforePublishPostProcessors(this.compressingPostProcessor);
+		}
 		rabbitTemplate.setMandatory(mandatory); // returned messages
 		if (rabbitProperties != null && rabbitProperties.getTemplate().getRetry().isEnabled()) {
 			Retry retry = rabbitProperties.getTemplate().getRetry();
@@ -266,34 +276,34 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 
 	private static class RabbitMessageListeningContainer implements MessageListeningContainer {
 
-		private final SimpleMessageListenerContainer listenerContainer;
+		private final SimpleMessageListenerContainer amqpListenerContainer;
 
-		RabbitMessageListeningContainer(SimpleMessageListenerContainer listenerContainer) {
-			this.listenerContainer = listenerContainer;
+		RabbitMessageListeningContainer(SimpleMessageListenerContainer amqpListenerContainer) {
+			this.amqpListenerContainer = amqpListenerContainer;
 		}
 		@Override
 		public void stop() {
 			if (this.isRunning()) {
-				listenerContainer.stop();
+				amqpListenerContainer.stop();
 			}
 		}
 
 		@Override
 		public void start() {
 			if (!this.isRunning()) {
-				listenerContainer.start();
+				amqpListenerContainer.start();
 			}
 		}
 
 		@Override
 		public boolean isRunning() {
-			return listenerContainer.isRunning();
+			return amqpListenerContainer.isRunning();
 		}
 
 		@Override
 		public void setListener(Consumer<Message<?>> messageConsumer) {
 
-			ChannelAwareMessageListener listener = new ChannelAwareMessageListener() {
+			ChannelAwareMessageListener amqpListener = new ChannelAwareMessageListener() {
 
 				private volatile MessageConverter messageConverter = new SimpleMessageConverter();
 
@@ -303,17 +313,16 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 
 				@Override
 				public void onMessage(org.springframework.amqp.core.Message message, Channel channel) throws Exception {
-					messageConsumer.accept(this.createMessage(message, channel));
+					messageConsumer.accept(this.createSpringMessage(message, channel));
 				}
 
-				private org.springframework.messaging.Message<Object> createMessage(org.springframework.amqp.core.Message message, Channel channel) {
-					Object payload = (Object) this.messageConverter.fromMessage(message);
-					Map<String, Object> headers = this.headerMapper
-							.toHeadersFromRequest(message.getMessageProperties());
-					headers.put(AmqpHeaders.DELIVERY_TAG, message.getMessageProperties().getDeliveryTag());
+				private Message<?> createSpringMessage(org.springframework.amqp.core.Message amqpMessage, Channel channel) {
+					Object payload = this.messageConverter.fromMessage(amqpMessage);
+					Map<String, Object> headers = this.headerMapper.toHeadersFromRequest(amqpMessage.getMessageProperties());
+					headers.put(AmqpHeaders.DELIVERY_TAG, amqpMessage.getMessageProperties().getDeliveryTag());
 					headers.put(AmqpHeaders.CHANNEL, channel);
 
-					final org.springframework.messaging.Message<Object> messagingMessage = this.messageBuilderFactory
+					Message<?> messagingMessage = this.messageBuilderFactory
 							.withPayload(payload)
 							.copyHeaders(headers)
 							.build();
@@ -321,7 +330,7 @@ public class RabbitDestinationBinder<C extends ExtendedConsumerProperties<Rabbit
 				}
 			};
 
-			listenerContainer.setMessageListener(listener);
+			amqpListenerContainer.setMessageListener(amqpListener);
 		}
 	}
 
